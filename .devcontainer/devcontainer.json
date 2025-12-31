@@ -35,4 +35,297 @@
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+}# keyword_analyzer.py
+# Modern CLI keyword analyzer using Click
+
+import os
+import re
+import csv
+import json
+import click
+from typing import List, Optional
+
+DEFAULT_KEYWORDS = [
+    "Perl", "Reddit", "submit_link", "refresh_token", "user_agent"
+]
+
+@click.command(
+    context_settings=dict(
+        help_option_names=["-h", "--help"]
+    )
+)
+@click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--keywords",
+    "-k",
+    help="Comma-separated list of keywords to search for",
+    default=None
+)
+@click.option(
+    "--csv",
+    is_flag=True,
+    help="Export results to CSV"
+)
+@click.option(
+    "--json",
+    is_flag=True,
+    help="Export results to JSON"
+)
+@click.option(
+    "--csv-file",
+    default="keyword_results.csv",
+    help="Custom CSV output filename"
+)
+@click.option(
+    "--json-file",
+    default="keyword_results.json",
+    help="Custom JSON output filename"
+)
+@click.option(
+    "--quiet", "-q",
+    is_flag=True,
+    help="Suppress console output (only show errors)"
+)
+def analyze(
+    input_file: str,
+    keywords: Optional[str],
+    csv: bool,
+    json: bool,
+    csv_file: str,
+    json_file: str,
+    quiet: bool,
+) -> None:
+    """
+    Analyze keywords in a text file using regex and export results.
+
+    Example usage:
+
+    \b
+    python keyword_analyzer.py data.txt --csv --json
+    python keyword_analyzer.py data.txt -k "Python,Go,Rust" --quiet
+    """
+    # Determine keywords
+    if keywords:
+        keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    else:
+        keyword_list = DEFAULT_KEYWORDS
+
+    if not keyword_list:
+        click.echo("Error: No keywords provided and default list is empty.", err=True)
+        raise click.Abort()
+
+    # Read the file
+    try:
+        with open(input_file, "r", encoding="utf-8") as f:
+            content = f.read()
+    except UnicodeDecodeError:
+        click.echo(f"Error: '{input_file}' contains invalid UTF-8 characters.", err=True)
+        raise click.Abort()
+    except PermissionError:
+        click.echo(f"Error: Permission denied accessing '{input_file}'.", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"Error reading file: {e}", err=True)
+        raise click.Abort()
+
+    if not quiet:
+        click.echo(f"Successfully read {len(content)} characters from '{input_file}'.\n")
+
+    results: List[dict] = []
+    header = ["Keyword", "Total Matches", "Lines Containing", "First Line"]
+
+    if not quiet:
+        click.echo("--- Keyword Regex Matching Results ---")
+        click.echo(f"{header[0]:<20} {header[1]:<15} {header[2]:<18} {header[3]:<10}")
+        click.echo("-" * 70)
+
+    for keyword in keyword_list:
+        pattern = re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
+
+        match_count = len(pattern.findall(content))
+
+        lines_with_match = len(set(
+            line for line in content.splitlines()
+            if pattern.search
+
+# Basic usage (uses default keywords)
+python keyword_analyzer.py data.txt
+
+# Export both CSV and JSON
+python keyword_analyzer.py data.txt --csv --json
+
+# Custom keywords
+python keyword_analyzer.py data.txt -k "Python,Ruby,JavaScript"
+
+# Quiet mode
+python keyword_analyzer.py data.txt --quiet --csv --json
+
+# Custom output files
+python keyword_analyzer.py data.txt --csv-file my_results.csv --json-file analysis.json
+
+# Show help
+python keyword_analyzer.py --help
+
+pip install click
+
+# keyword_analyzer.py
+# Keyword analyzer CLI with Click subcommands + Rich formatting
+
+import os
+import re
+import csv
+import json
+from typing import List, Optional
+
+import click
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import track
+
+DEFAULT_KEYWORDS = [
+    "Perl", "Reddit", "submit_link", "refresh_token", "user_agent"
+]
+
+console = Console()
+
+
+def analyze_file(
+    input_file: str,
+    keywords: Optional[str],
+    quiet: bool,
+    csv_export: bool,
+    json_export: bool,
+    csv_file: str,
+    json_file: str,
+) -> None:
+    """Core analysis logic with Rich formatting."""
+
+    # Parse keywords
+    if keywords:
+        keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    else:
+        keyword_list = DEFAULT_KEYWORDS
+
+    if not keyword_list:
+        console.print("[red]Error: No keywords provided and default list is empty.[/red]")
+        raise click.Abort()
+
+    # Read file with progress indicator
+    with console.status(f"[bold cyan]Reading {input_file}...[/bold cyan]"):
+        try:
+            with open(input_file, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            console.print(f"[red]Error reading '{input_file}': {e}[/red]")
+            raise click.Abort()
+
+    if not quiet:
+        console.print(
+            Panel.fit(
+                f"[bold]Read {len(content)} characters from '{input_file}'[/bold]",
+                title="Input",
+
+pip install click rich
+
+python keyword_analyzer.py analyze data.txt
+python keyword_analyzer.py all data.txt -k "Python,Java,Rust"
+python keyword_analyzer.py csv data.txt --quiet --output results.csv
+
+import requests, json
+
+# Set your session ID & developer key
+session_id = "set_your_session_id"
+developer_key = "set_your_developer_key"
+
+headers = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "sessionId": session_id,
+    "devKey": developer_key
 }
+
+createvendor_url = "https://gateway.stage.bill.com/connect/v3/vendors"
+
+# Vendor in California, US
+createvendor_data = {
+    "name": "Happy Music Supplies",
+    "accountType": "BUSINESS",
+    "email": "info@happymusicsupplies.org",
+    "phone": "9876543210",
+    "address": {
+        "line1": "123 Main Street",
+        "city": "San Jose",
+        "stateOrProvince": "CA",
+        "zipOrPostalCode": "95002",
+        "country": "US"
+    },
+    "paymentInformation": {
+        "payeeName": "Happy Music Supplies",
+        "bankAccount": {
+            "nameOnAccount": "Bill Vendorson",
+            "accountNumber": "111222333",
+            "routingNumber": "074000010"
+        }
+    },
+    "billCurrency": "USD"
+}
+
+createvendor_response = requests.post(createvendor_url, headers=headers, json=createvendor_data)
+
+# Retrieve vendor ID
+vendor_id = json.loads(createvendor_response.text)['id']
+
+createbill_url = "https://gateway.stage.bill.com/connect/v3/bills"
+
+# Bill details
+createbill_data = {
+    "vendorId": vendor_id,
+    "dueDate": "2025-12-15",
+    "billLineItems": [
+        {
+            "amount": 149.00,
+            "description": "USB audio interface"
+        },
+        {
+            "amount": 79.99,
+            "description": "Drum foot pedal"
+        }
+    ],
+    "invoice": {
+        "invoiceDate": "2025-12-15",
+        "invoiceNumber": "202501"
+    }
+}
+
+createbill_response = requests.post(createbill_url, headers=headers, json=createbill_data)
+
+# Retrieve bill ID
+bill_id = json.loads(createbill_response.text)['id']
+
+createpayment_url = "https://gateway.stage.bill.com/connect/v3/payments"
+
+# Set your bank account ID
+bankaccount_id = "set_your_bankaccount_id"
+
+# Create a payment
+createpayment_data = {
+    "vendorId": vendor_id,
+    "billId": bill_id,
+  	"processDate": "2025-12-20",
+    "amount": 228.99,
+    "fundingAccount": {
+        "type": "BANK_ACCOUNT",
+        "id": bankaccount_id
+    },
+    "processingOptions": {
+        "createBill": False
+    }
+}
+
+createpayment_response = requests.post(createpayment_url, headers=headers, json=createpayment_data)
+
+# Print response for vendor bill payment
+response_object = json.loads(createpayment_response.text)
+response_formatted = json.dumps(response_object, indent=2)
+print(response_formatted)
