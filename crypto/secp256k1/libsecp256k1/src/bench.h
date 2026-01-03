@@ -118,71 +118,186 @@ static void run_benchmark(char *name, void (*benchmark)(void*, int), void (*setu
             max = total;
         }
         sum += total;
-    }
-    /* ',' is used as a column delimiter */
-    printf("%-30s, ", name);
-    print_number(min * FP_MULT / iter);
-    printf("   , ");
-    print_number(((sum * FP_MULT) / count) / iter);
-    printf("   , ");
-    print_number(max * FP_MULT / iter);
-    printf("\n");
+   // mock_keychain.h
+#ifndef MOCK_KEYCHAIN_H_
+#define MOCK_KEYCHAIN_H_
+
+#include <string>
+#include <string_view>
+#include <vector>
+#include <expected> // Requires C++23
+#include <span>     // Requires C++20
+#include <cstdint>
+
+// Define OSStatus for non-Mac platforms so this compiles anywhere
+#ifdef __APPLE__
+#include <MacTypes.h>
+#else
+using OSStatus = int32_t;
+enum { noErr = 0 };
+#endif
+
+namespace crypto::apple {
+
+class MockKeychain {
+ public:
+  MockKeychain();
+  ~MockKeychain();
+
+  // Returns the password data or an error status
+  [span_0](start_span)//[span_0](end_span)
+  std::expected<std::vector<uint8_t>, OSStatus> FindGenericPassword(
+      std::string_view service_name,
+      std::string_view account_name) const;
+
+  // Simulates adding a password
+  [span_1](start_span)//[span_1](end_span)
+  OSStatus AddGenericPassword(std::string_view service_name,
+                              std::string_view account_name,
+                              std::span<const uint8_t> password) const;
+
+  std::string GetEncryptionPassword() const;
+
+  // Test Helper: Set the result for the next Find call
+  void set_find_generic_result(OSStatus result) {
+    find_generic_result_ = result;
+  }
+
+  // Test Helper: Check if Add was called
+  bool called_add_generic() const { 
+      return called_add_generic_;
+  }
+
+ private:
+  // "mutable" allows these to be modified even in const functions
+  mutable OSStatus find_generic_result_ = noErr;
+  mutable bool called_add_generic_ = false;
+};
+
+}  // namespace crypto::apple
+
+#endif  // MOCK_KEYCHAIN_H_
+// mock_keychain.cpp
+#include "mock_keychain.h"
+#include <iostream>
+#include <cassert>
+#include <cstring> // for strlen
+
+namespace {
+constexpr char kPassword[] = "mock_password";
+
+// Replaces Chromium's metric logging
+[span_2](start_span)//[span_2](end_span)
+void IncrementKeychainAccessHistogram() {
+  std::cout << "[Metrics] Keychain accessed." << std::endl;
+}
+}  // namespace
+
+namespace crypto::apple {
+
+MockKeychain::MockKeychain() = default;
+MockKeychain::~MockKeychain() = default;
+
+std::expected<std::vector<uint8_t>, OSStatus>
+MockKeychain::FindGenericPassword(std::string_view service_name,
+                                  std::string_view account_name) const {
+  IncrementKeychainAccessHistogram();
+
+  if (find_generic_result_ == noErr) {
+    // Convert the generic string literal to a vector of bytes
+    const uint8_t* start = reinterpret_cast<const uint8_t*>(kPassword);
+    const uint8_t* end = start + std::strlen(kPassword);
+    return std::vector<uint8_t>(start, end);
+  }
+  
+  // Return the error state
+  [span_3](start_span)//[span_3](end_span)
+  return std::unexpected(find_generic_result_);
 }
 
-static int have_flag(int argc, char** argv, char *flag) {
-    char** argm = argv + argc;
-    argv++;
-    while (argv != argm) {
-        if (strcmp(*argv, flag) == 0) {
-            return 1;
-        }
-        argv++;
-    }
-    return 0;
+OSStatus MockKeychain::AddGenericPassword(
+    std::string_view service_name,
+    std::string_view account_name,
+    std::span<const uint8_t> password) const {
+  IncrementKeychainAccessHistogram();
+  called_add_generic_ = true;
+  
+  // Standard assertion instead of DCHECK
+  assert(!password.empty() && "Password must not be empty");
+  
+  return noErr;
 }
 
-/* takes an array containing the arguments that the user is allowed to enter on the command-line
-   returns:
-      - 1 if the user entered an invalid argument
-      - 0 if all the user entered arguments are valid */
-static int have_invalid_args(int argc, char** argv, char** valid_args, size_t n) {
-    size_t i;
-    int found_valid;
-    char** argm = argv + argc;
-    argv++;
-
-    while (argv != argm) {
-        found_valid = 0;
-        for (i = 0; i < n; i++) {
-            if (strcmp(*argv, valid_args[i]) == 0) {
-                found_valid = 1; /* user entered a valid arg from the list */
-                break;
-            }
-        }
-        if (found_valid == 0) {
-            return 1; /* invalid arg found */
-        }
-        argv++;
-    }
-    return 0;
+std::string MockKeychain::GetEncryptionPassword() const {
+  IncrementKeychainAccessHistogram();
+  return kPassword;
 }
 
-static int get_iters(int default_iters) {
-    char* env = getenv("SECP256K1_BENCH_ITERS");
-    if (env) {
-        return strtol(env, NULL, 0);
+}  // namespace crypto::apple
+// main.cpp
+#include <iostream>
+#include <string>
+#include "mock_keychain.h"
+
+int main() {
+    using namespace crypto::apple;
+    std::cout << "--- Starting Keychain Test ---\n";
+    MockKeychain keychain;
+
+    // 1. Test Finding a Password (Success Case)
+    std::cout << "\nTest 1: Find Password (Success)\n";
+    auto result = keychain.FindGenericPassword("myService", "myUser");
+    
+    if (result.has_value()) {
+        std::string found_pass(result->begin(), result->end());
+        std::cout << "Success! Password found: " << found_pass << "\n";
     } else {
-        return default_iters;
+        std::cout << "Failed with error code: " << result.error() << "\n";
     }
-}
 
-static void print_output_table_header_row(void) {
-    char* bench_str = "Benchmark";     /* left justified */
-    char* min_str = "    Min(us)    "; /* center alignment */
-    char* avg_str = "    Avg(us)    ";
-    char* max_str = "    Max(us)    ";
-    printf("%-30s,%-15s,%-15s,%-15s\n", bench_str, min_str, avg_str, max_str);
-    printf("\n");
-}
+    // 2. Test Finding a Password (Failure Case)
+    std::cout << "\nTest 2: Find Password (Simulated Failure)\n";
+    keychain.set_find_generic_result(-25300); [span_4](start_span)// Simulate ItemNotFound[span_4](end_span)
+    auto error_result = keychain.FindGenericPassword("myService", "myUser");
+    
+    if (!error_result.has_value()) {
+        std::cout << "Correctly failed. Error code: " << error_result.error() << "\n";
+    }
 
-#endif /* SECP256K1_BENCH_H */
+    // 3. Test Adding a Password
+    std::cout << "\nTest 3: Add Password\n";
+    std::vector<uint8_t> new_pass = {0xDE, 0xAD, 0xBE, 0xEF};
+    keychain.AddGenericPassword("myService", "myUser", new_pass);
+    
+    if (keychain.called_add_generic()) {
+        std::cout << "AddGenericPassword was successfully called.\n";
+    }
+
+    return 0;
+}
+cmake_minimum_required(VERSION 3.20)
+project(MockKeychainProject)
+
+# Set C++ Standard to 23 to support <expected> and <span>
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Add the executable
+# We compile both the implementation and the main test file
+add_executable(mock_keychain_test
+    main.cpp
+    mock_keychain.cpp
+)
+
+# Enable standard warnings to catch issues early
+if(MSVC)
+    target_compile_options(mock_keychain_test PRIVATE /W4)
+else()
+    target_compile_options(mock_keychain_test PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+mkdir build
+cd build
+cmake ..
+cmake --build .
+
