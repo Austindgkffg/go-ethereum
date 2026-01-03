@@ -300,4 +300,30 @@ mkdir build
 cd build
 cmake ..
 cmake --build .
+This fix allows Trezor to support full 32bit chainId in geth, with the
+next version of firmware.
+
+For `chainId > 2147483630` case, Trezor returns signature bit only.
+- Trezor returns only signature parity for `chainId > 2147483630` case.
+- for `chainId == 2147483630` case, Trezor returns `MAX_UINT32` or `0`,
+but it doesn't matter.
+  (`2147483630 * 2 + 35` = `4294967295`(`MAX_UINT32`))
+
+chainId | returned signature_v | compatible issue
+---------|------------------------|--------------------
+0 < chainId <= 255 | chainId * 2 + 35 + v | no issue (firmware `1.6.2`
+for Trezor one)
+255 < chainId <= 2147483630 | chainId * 2 + 35 + v | ***fixed.***
+*firmware `1.6.3`*
+chainId > 2147483630 | v | *firmware `1.6.3`*
+
+Please see also: full 32bit chainId support for Trezor
+- Trezor one: trezor/trezor-mcu#399 ***merged***
+- Trezor model T: trezor/trezor-core#311
+***merged***
+
+---------
+
+Signed-off-by: Guillaume Ballet <3272758+gballet@users.noreply.github.com>
+Co-authored-by: Guillaume Ballet <3272758+gballet@users.noreply.github.com>
 
